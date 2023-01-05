@@ -6,6 +6,7 @@ import math
 import os
 import os.path as osp
 import re
+import sys
 import webbrowser
 
 import imgviz
@@ -318,6 +319,24 @@ class MainWindow(QtWidgets.QMainWindow):
         )
         toggle_keep_prev_mode.setChecked(self._config["keep_prev"])
 
+        savePolygon = action(
+            self.tr("Save Polygons to Bitmap"),
+            self.savePolygon,
+            shortcuts["save_polygon"],
+            "save",
+            self.tr("Save the selected polygons to Bitmap"),
+            enabled=False,
+        )
+
+        travelSavePolygon = action(
+            self.tr("Save Polygons to Bitmap for all"),
+            self.travelSavePolygon,
+            shortcuts["travel_polygon"],
+            "travel",
+            self.tr("Save the selected polygons to Bitmap for all"),
+            enabled=True,
+        )
+
         createMode = action(
             self.tr("Create Polygons"),
             lambda: self.toggleDrawMode(False, createMode="polygon"),
@@ -488,6 +507,16 @@ class MainWindow(QtWidgets.QMainWindow):
             enabled=False,
         )
 
+        showIgnore = action(
+            self.tr("Show __ignore__ rectangle"),
+            self.showIgnore,
+            icon="eye",
+            tip=self.tr("Show or Hide __ignore__ rectangle"),
+            checkable=True,
+            enabled=True,
+            checked=True,
+        )
+
         help = action(
             self.tr("&Tutorial"),
             self.tutorial,
@@ -632,6 +661,7 @@ class MainWindow(QtWidgets.QMainWindow):
             close=close,
             deleteFile=deleteFile,
             toggleKeepPrevMode=toggle_keep_prev_mode,
+            travelSavePolygon=travelSavePolygon,
             delete=delete,
             edit=edit,
             duplicate=duplicate,
@@ -640,6 +670,7 @@ class MainWindow(QtWidgets.QMainWindow):
             undoLastPoint=undoLastPoint,
             undo=undo,
             removePoint=removePoint,
+            savePolygon=savePolygon,
             createMode=createMode,
             editMode=editMode,
             createRectangleMode=createRectangleMode,
@@ -676,9 +707,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 removePoint,
                 None,
                 toggle_keep_prev_mode,
+                None,
+                travelSavePolygon,
             ),
             # menu shown at right click
             menu=(
+                savePolygon,
+                None,
                 createMode,
                 createRectangleMode,
                 createCircleMode,
@@ -757,6 +792,8 @@ class MainWindow(QtWidgets.QMainWindow):
                 hideAll,
                 showAll,
                 toggleAll,
+                None,
+                showIgnore,
                 None,
                 zoomIn,
                 zoomOut,
@@ -1102,6 +1139,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.undoLastPoint.setEnabled(drawing)
         self.actions.undo.setEnabled(not drawing)
         self.actions.delete.setEnabled(not drawing)
+        self.actions.savePolygon.setEnabled(not drawing)
 
     def toggleDrawMode(self, edit=True, createMode="polygon"):
         draw_actions = {
@@ -1308,6 +1346,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.actions.duplicate.setEnabled(n_selected)
         self.actions.copy.setEnabled(n_selected)
         self.actions.edit.setEnabled(n_selected)
+        self.actions.savePolygon.setEnabled(n_selected)
 
     def addLabel(self, shape):
         if shape.group_id is None:
@@ -1315,6 +1354,8 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             text = "{} ({})".format(shape.label, shape.group_id)
         label_list_item = LabelListWidgetItem(text, shape)
+        visible = self.canvas.showIgnore() or shape.label != '__ignore__'
+        label_list_item.setCheckState(Qt.Checked if visible else Qt.Unchecked)
         self.labelList.addItem(label_list_item)
         if self.uniqLabelList.findItemByLabel(shape.label) is None:
             item = self.uniqLabelList.createItemFromLabel(shape.label)
@@ -1361,6 +1402,96 @@ class MainWindow(QtWidgets.QMainWindow):
         elif self._config["default_shape_color"]:
             return self._config["default_shape_color"]
         return (0, 255, 0)
+
+    def saveShape(self, shape):
+        def inner_shape(shape, min_x, min_y, max_x, max_y):
+            for p in shape.points:
+                if p.x() < min_x or max_x < p.x():
+                    return False
+                if p.y() < min_y or max_y < p.y():
+                    return False
+            return True
+
+        def format_shape(s, min_x, min_y):
+            data = s.other_data.copy()
+            data.update(
+                dict(
+                    label=s.label.encode("utf-8") if PY2 else s.label,
+                    points=[(p.x() - min_x, p.y() - min_y) for p in s.points],
+                    group_id=s.group_id,
+                    shape_type=s.shape_type,
+                    flags=s.flags,
+                )
+            )
+            return data
+
+        def align_to(x, align):
+            return (x + (align - 1)) & ~(align - 1)
+
+        # Just save __ignore__ of rectangle
+        if (shape.shape_type != 'rectangle') or (shape.label != '__ignore__'):
+            return
+
+        # calc min boundingRect
+        (min_x, min_y, max_x, max_y) = (sys.maxsize, sys.maxsize, 0, 0)
+        for p in shape.points:
+            if p.x() < min_x: min_x = max(p.x(), 0)
+            if p.y() < min_y: min_y = max(p.y(), 0)
+            if p.x() > max_x: max_x = min(p.x(), self.image.width())
+            if p.y() > max_y: max_y = min(p.y(), self.image.height())
+
+        min_x = int(min_x)
+        min_y = int(min_y)
+        max_x = round(max_x)
+        max_y = round(max_y)
+        # align image size
+        align_x = 512 if max_x - min_x <= 512 else align_to((max_x - min_x), 32)
+        align_y = 512 if max_y - min_y <= 512 else align_to((max_y - min_y), 32)
+        align_m = max(align_x, align_y)
+        if min_x + align_m < self.image.width():
+            max_x = min_x + align_m
+        else:
+            max_x = self.image.width()
+            min_x = 0 if (max_x < align_m) else (max_x - align_m)
+
+        if min_y + align_m < self.image.height():
+            max_y = min_y + align_m
+        else:
+            max_y = self.image.height()
+            min_y = 0 if (max_y < align_m) else (max_y - align_m)
+
+        # format sub file name.
+        (filepath, filename) = osp.split(self.filename)
+        (basename, extension) = osp.splitext(filename)
+        basename = basename + "_" + str(min_x) + "_" + str(min_y)
+        sub_label_name = basename + ".json"
+        sub_image_name = basename + extension
+        if self.output_dir:
+            sub_label_file = osp.join(self.output_dir, sub_label_name)
+            sub_image_file = osp.join(self.output_dir, sub_image_name)
+        else:
+            sub_label_file = osp.join(self.currentPath(), sub_label_name)
+            sub_image_file = osp.join(self.currentPath(), sub_image_name)
+
+        # Copy sub image
+        sub_image = self.image.copy(min_x, min_y, max_x - min_x, max_y - min_y)
+        sub_image.save(sub_image_file, extension.split(".")[1])
+        # Save sub labels
+        sub_shapes = []
+        for i in range(len(self.labelList)):
+            if shape != self.labelList[i].shape() and inner_shape(self.labelList[i].shape(), min_x, min_y, max_x, max_y):
+                sub_shapes.append(self.labelList[i].shape())
+        if len(sub_shapes) > 0:
+            lf = LabelFile()
+            lf.save(filename=sub_label_file,
+                    shapes=[format_shape(item, min_x, min_y) for item in sub_shapes],
+                    imagePath=sub_image_name,
+                    imageHeight=max_y-min_y,
+                    imageWidth=max_x-min_x,
+                    imageData=None,
+                    otherData=None,
+                    flags=None,
+                    )
 
     def remLabels(self, shapes):
         for shape in shapes:
@@ -1646,6 +1777,8 @@ class MainWindow(QtWidgets.QMainWindow):
         for item in self.labelList:
             if value is None:
                 flag = item.checkState() == Qt.Unchecked
+            if item.shape.shape_type == 'rectangle' and item.shape.label == '__ignore__':
+                flag = flag and self.canvas.showIgnore()
             item.setCheckState(Qt.Checked if flag else Qt.Unchecked)
 
     def loadFile(self, filename=None):
@@ -2125,6 +2258,28 @@ class MainWindow(QtWidgets.QMainWindow):
             if self.noShapes():
                 for action in self.actions.onShapesPresent:
                     action.setEnabled(False)
+
+    def savePolygon(self):
+        for shape in self.canvas.selectedShapes:
+            self.saveShape(shape)
+
+    def travelSavePolygon(self):
+        for currIndex in range(0, len(self.imageList)):
+            self.loadFile(self.imageList[currIndex])
+            for shape in self.canvas.shapes:
+                shape.selected = True
+                self.saveShape(shape)
+            # Avoid MainWindow frozen
+            QtWidgets.QApplication.processEvents()
+
+    def showIgnore(self, value):
+        self.canvas.setShowIgnore(value)
+        for item in self.labelList:
+            shape = item.shape()
+            if (shape.shape_type != 'rectangle') or (shape.label != '__ignore__'):
+                continue
+            self.canvas.visible[item] = value
+            item.setCheckState(Qt.Checked if value else Qt.Unchecked)
 
     def copyShape(self):
         self.canvas.endMove(copy=True)

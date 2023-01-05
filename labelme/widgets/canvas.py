@@ -38,6 +38,7 @@ class Canvas(QtWidgets.QWidget):
     _createMode = "polygon"
 
     _fill_drawing = False
+    _show_ignore = True
 
     def __init__(self, *args, **kwargs):
         self.epsilon = kwargs.pop("epsilon", 10.0)
@@ -108,6 +109,12 @@ class Canvas(QtWidgets.QWidget):
 
     def setFillDrawing(self, value):
         self._fill_drawing = value
+
+    def showIgnore(self):
+        return self._show_ignore
+
+    def setShowIgnore(self, value):
+        self._show_ignore = value
 
     @property
     def createMode(self):
@@ -1037,6 +1044,10 @@ class Canvas(QtWidgets.QWidget):
         self.hShape = None
         self.hVertex = None
         self.hEdge = None
+        if not self._show_ignore:
+            for shape in self.shapes:
+                if (shape.shape_type == "rectangle") and (shape.label == '__ignore__'):
+                    self.visible[shape] = False
         self.update()
 
     def setShapeVisible(self, shape, value):

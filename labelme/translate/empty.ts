@@ -178,7 +178,37 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../app.py" line="315"/>
+        <location filename="../app.py" line="313"/>
+        <source>Show __ignore__ rectangle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="317"/>
+        <source>Show or Hide __ignore__ rectangle</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="323"/>
+        <source>Save Polygons to Bitmap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="327"/>
+        <source>Save the selected polygons to Bitmap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="333"/>
+        <source>Save Polygons to Bitmap for all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="337"/>
+        <source>Save the selected polygons to Bitmap for all</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="255"/>
         <source>Create Polygons</source>
         <translation type="unfinished"></translation>
     </message>

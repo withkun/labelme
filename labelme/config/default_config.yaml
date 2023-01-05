@@ -101,6 +101,8 @@ shortcuts:
   fit_window: Ctrl+F
   fit_width: Ctrl+Shift+F
 
+  save_polygon: Ctrl+B
+  travel_polygon: Ctrl+T
   create_polygon: Ctrl+N
   create_rectangle: Ctrl+R
   create_circle: null

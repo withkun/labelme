@@ -178,7 +178,37 @@
         <translation>开关“保留最后的标注”模式</translation>
     </message>
     <message>
-        <location filename="../app.py" line="315"/>
+        <location filename="../app.py" line="313"/>
+        <source>Show __ignore__ rectangle</source>
+        <translation>显示 __ignore__ 类型</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="317"/>
+        <source>Show or Hide __ignore__ rectangle</source>
+        <translation>显示/隐藏 __ignore__ 类型</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="323"/>
+        <source>Save Polygons to Bitmap</source>
+        <translation>保存选区为图片</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="327"/>
+        <source>Save the selected polygons to Bitmap</source>
+        <translation>把选中的目标选区保存为图片</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="333"/>
+        <source>Save Polygons to Bitmap for all</source>
+        <translation>遍历保存目标选区为图片</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="337"/>
+        <source>Save the selected polygons to Bitmap for all</source>
+        <translation>遍历所有文件把目标选区保存为图片</translation>
+    </message>
+    <message>
+        <location filename="../app.py" line="255"/>
         <source>Create Polygons</source>
         <translation>创建多边形</translation>
     </message>
